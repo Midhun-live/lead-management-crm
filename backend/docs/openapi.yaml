@@ -1,0 +1,821 @@
+openapi: 3.0.3
+info:
+  title: Lead Management CRM API
+  version: 1.0.0
+  description: REST API for a Lead Management CRM built using Express, TypeScript, Prisma ORM, PostgreSQL and JWT Authentication.
+  contact:
+    name: API Support Placeholder
+    email: support@crm-assessment.local
+servers:
+  - url: http://localhost:5000
+    description: Local Development Server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a user account with a hashed password. Trim fields and collapse duplicate spaces inside the name.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+              example:
+                success: true
+                message: User registered successfully
+                data:
+                  id: 63134400-2aa9-49aa-8476-912007c5c8a1
+                  name: John Doe
+                  email: john.doe@crm.com
+                  isActive: true
+                  tokenVersion: 1
+                  lastLogin: null
+                  createdAt: '2026-06-27T06:37:39.493Z'
+                  updatedAt: '2026-06-27T06:37:39.493Z'
+        '400':
+          description: Validation failed (e.g. empty strings, short password)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              example:
+                success: false
+                message: Validation failed
+                details:
+                  - code: too_small
+                    minimum: 1
+                    type: string
+                    inclusive: true
+                    exact: false
+                    message: Name is required
+                    path: [body, name]
+        '409':
+          description: Email is already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                success: false
+                message: Email is already registered
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate a user
+      description: Validate email/password credentials and return a signed JWT.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          token:
+                            type: string
+                          user:
+                            $ref: '#/components/schemas/User'
+              example:
+                success: true
+                message: Login successful
+                data:
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2MzEzNDQwMC0yYWE5LTQ5Y...
+                  user:
+                    id: 63134400-2aa9-49aa-8476-912007c5c8a1
+                    name: John Doe
+                    email: john.doe@crm.com
+                    isActive: true
+                    tokenVersion: 1
+                    lastLogin: '2026-06-27T06:37:46.280Z'
+                    createdAt: '2026-06-27T06:37:39.493Z'
+                    updatedAt: '2026-06-27T06:37:46.281Z'
+        '400':
+          description: Validation failed (e.g. invalid email format)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              example:
+                success: false
+                message: Validation failed
+                details:
+                  - code: invalid_string
+                    validation: email
+                    message: Invalid email address
+                    path: [body, email]
+        '401':
+          description: Invalid email or password, or user account deactivated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                success: false
+                message: Invalid email or password
+
+  /api/auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Retrieve the current authenticated user profile
+      description: Returns the user object linked to the Bearer token.
+      responses:
+        '200':
+          description: Current user retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+              example:
+                success: true
+                message: Current user retrieved successfully
+                data:
+                  id: 63134400-2aa9-49aa-8476-912007c5c8a1
+                  name: John Doe
+                  email: john.doe@crm.com
+                  isActive: true
+                  tokenVersion: 1
+                  lastLogin: '2026-06-27T06:37:46.280Z'
+                  createdAt: '2026-06-27T06:37:39.493Z'
+                  updatedAt: '2026-06-27T06:37:46.281Z'
+        '401':
+          description: Unauthorized (missing, expired, or invalid token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                success: false
+                message: Authorization token has expired
+
+  /api/leads:
+    post:
+      tags:
+        - Lead Management
+      summary: Create a lead
+      description: Add a new lead. Fails if an active (non-deleted) lead owned by this user already has the same email or phone.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLeadRequest'
+      responses:
+        '201':
+          description: Lead created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Lead'
+              example:
+                success: true
+                message: Lead created successfully
+                data:
+                  id: 7625c145-9c0b-44b7-b5d4-6c537bf845a6
+                  name: Jane Doe
+                  company: Acme Inc
+                  email: jane@acme.com
+                  phone: '1234567890'
+                  source: WEBSITE
+                  status: NEW
+                  notes: First meeting setup.
+                  createdBy: 63134400-2aa9-49aa-8476-912007c5c8a1
+                  deletedAt: null
+                  createdAt: '2026-06-27T06:38:41.392Z'
+                  updatedAt: '2026-06-27T06:38:41.392Z'
+        '400':
+          description: Validation failed (e.g. invalid phone length or email format)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              example:
+                success: false
+                message: Validation failed
+                details:
+                  - code: too_small
+                    minimum: 5
+                    type: string
+                    inclusive: true
+                    exact: false
+                    message: Phone must be at least 5 characters
+                    path: [body, phone]
+        '401':
+          description: Unauthorized
+        '409':
+          description: Lead with this email or phone already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                success: false
+                message: Lead already exists
+
+    get:
+      tags:
+        - Lead Management
+      summary: List leads
+      description: Get paginated, searched, filtered, and sorted leads created by the authenticated user. Soft-deleted records are excluded.
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination (minimum 1).
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of leads per page (minimum 1, maximum 100).
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+        - name: q
+          in: query
+          description: Case-insensitive search query matching name, company, email, or phone.
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter leads by status.
+          required: false
+          schema:
+            $ref: '#/components/schemas/LeadStatus'
+        - name: source
+          in: query
+          description: Filter leads by source.
+          required: false
+          schema:
+            $ref: '#/components/schemas/LeadSource'
+        - name: sortBy
+          in: query
+          description: Field to sort by.
+          required: false
+          schema:
+            type: string
+            enum: [createdAt, updatedAt, name, company]
+            default: createdAt
+        - name: sortOrder
+          in: query
+          description: Direction to sort.
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Leads retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Lead'
+                          page:
+                            type: integer
+                          limit:
+                            type: integer
+                          total:
+                            type: integer
+                          totalPages:
+                            type: integer
+              example:
+                success: true
+                message: Leads retrieved successfully
+                data:
+                  items:
+                    - id: 7625c145-9c0b-44b7-b5d4-6c537bf845a6
+                      name: Jane Doe
+                      company: Acme Inc
+                      email: jane@acme.com
+                      phone: '1234567890'
+                      source: WEBSITE
+                      status: NEW
+                      notes: First meeting setup.
+                      createdBy: 63134400-2aa9-49aa-8476-912007c5c8a1
+                      deletedAt: null
+                      createdAt: '2026-06-27T06:38:41.392Z'
+                      updatedAt: '2026-06-27T06:38:41.392Z'
+                  page: 1
+                  limit: 10
+                  total: 1
+                  totalPages: 1
+        '400':
+          description: Unexpected query parameters or validation error (e.g. limit > 100 or page exceeds total pages)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                success: false
+                message: Page number exceeds total pages
+        '401':
+          description: Unauthorized
+
+  /api/leads/{id}:
+    parameters:
+      - name: id
+        in: path
+        description: UUID of the lead
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags:
+        - Lead Management
+      summary: Get a single lead
+      description: Returns details of a specific active lead that belongs to the user.
+      responses:
+        '200':
+          description: Lead retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Lead'
+              example:
+                success: true
+                message: Lead retrieved successfully
+                data:
+                  id: 7625c145-9c0b-44b7-b5d4-6c537bf845a6
+                  name: Jane Doe
+                  company: Acme Inc
+                  email: jane@acme.com
+                  phone: '1234567890'
+                  source: WEBSITE
+                  status: NEW
+                  notes: First meeting setup.
+                  createdBy: 63134400-2aa9-49aa-8476-912007c5c8a1
+                  deletedAt: null
+                  createdAt: '2026-06-27T06:38:41.392Z'
+                  updatedAt: '2026-06-27T06:38:41.392Z'
+        '400':
+          description: Invalid Lead ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                success: false
+                message: Invalid Lead ID.
+        '401':
+          description: Unauthorized
+        '404':
+          description: Lead not found, soft deleted, or belongs to another user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                success: false
+                message: Lead not found
+
+  /api/leads/{id}:
+    parameters:
+      - name: id
+        in: path
+        description: UUID of the lead
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      tags:
+        - Lead Management
+      summary: Update a lead
+      description: Update lead properties. Checks ownership and validates duplicate email/phone against other active leads owned by the same user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLeadRequest'
+      responses:
+        '200':
+          description: Lead updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Lead'
+              example:
+                success: true
+                message: Lead updated successfully
+                data:
+                  id: 7625c145-9c0b-44b7-b5d4-6c537bf845a6
+                  name: Jane Updated
+                  company: Acme Inc
+                  email: jane@acme.com
+                  phone: '1234567890'
+                  source: WEBSITE
+                  status: NEW
+                  notes: Notes updated.
+                  createdBy: 63134400-2aa9-49aa-8476-912007c5c8a1
+                  deletedAt: null
+                  createdAt: '2026-06-27T06:38:41.392Z'
+                  updatedAt: '2026-06-27T06:41:37.829Z'
+        '400':
+          description: Validation error or invalid UUID parameter format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              example:
+                success: false
+                message: Validation failed
+                details:
+                  - code: invalid_string
+                    validation: email
+                    message: Invalid email address
+                    path: [body, email]
+        '401':
+          description: Unauthorized
+        '404':
+          description: Lead not found, soft deleted, or belongs to another user
+        '409':
+          description: Duplicate email or phone found on another active lead of the user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                success: false
+                message: Lead already exists
+
+    delete:
+      tags:
+        - Lead Management
+      summary: Soft delete a lead
+      description: Set deletedAt field to current timestamp. Rejects if lead is already deleted.
+      responses:
+        '200':
+          description: Lead deleted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: 'null'
+              example:
+                success: true
+                message: Lead deleted successfully
+                data: null
+        '400':
+          description: Invalid Lead ID format
+        '401':
+          description: Unauthorized
+        '404':
+          description: Lead not found, already soft deleted, or belongs to another user
+
+  /api/dashboard:
+    get:
+      tags:
+        - Dashboard
+      summary: Get dashboard metrics
+      description: Returns counts of active leads grouped by their status. All statuses are returned even if their count is zero.
+      responses:
+        '200':
+          description: Dashboard metrics fetched successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DashboardResponse'
+              example:
+                success: true
+                message: Dashboard fetched successfully
+                data:
+                  totalLeads: 1
+                  statusCounts:
+                    NEW: 1
+                    CONTACTED: 0
+                    QUALIFIED: 0
+                    WON: 0
+                    LOST: 0
+        '401':
+          description: Unauthorized
+        '500':
+          description: Unexpected database error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                success: false
+                message: Internal Server Error
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        isActive:
+          type: boolean
+        tokenVersion:
+          type: integer
+        lastLogin:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Lead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        company:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        source:
+          $ref: '#/components/schemas/LeadSource'
+        status:
+          $ref: '#/components/schemas/LeadStatus'
+        notes:
+          type: string
+          nullable: true
+        createdBy:
+          type: string
+          format: uuid
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    LeadStatus:
+      type: string
+      enum:
+        - NEW
+        - CONTACTED
+        - QUALIFIED
+        - WON
+        - LOST
+
+    LeadSource:
+      type: string
+      enum:
+        - WEBSITE
+        - LINKEDIN
+        - REFERRAL
+        - EMAIL
+        - PHONE
+        - OTHER
+
+    DashboardResponse:
+      type: object
+      properties:
+        totalLeads:
+          type: integer
+        statusCounts:
+          type: object
+          properties:
+            NEW:
+              type: integer
+            CONTACTED:
+              type: integer
+            QUALIFIED:
+              type: integer
+            WON:
+              type: integer
+            LOST:
+              type: integer
+
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+
+    ApiError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        details:
+          type: object
+          nullable: true
+
+    ValidationError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Validation failed
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              message:
+                type: string
+              path:
+                type: array
+                items:
+                  type: string
+
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: john.doe@crm.com
+        password:
+          type: string
+          format: password
+          example: password123
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: john.doe@crm.com
+        password:
+          type: string
+          format: password
+          example: password123
+
+    CreateLeadRequest:
+      type: object
+      required:
+        - name
+        - company
+        - email
+        - phone
+        - source
+        - status
+      properties:
+        name:
+          type: string
+          example: Jane Doe
+        company:
+          type: string
+          example: Acme Inc
+        email:
+          type: string
+          format: email
+          example: jane@acme.com
+        phone:
+          type: string
+          example: '1234567890'
+        source:
+          $ref: '#/components/schemas/LeadSource'
+        status:
+          $ref: '#/components/schemas/LeadStatus'
+        notes:
+          type: string
+          nullable: true
+          example: Initial contact made.
+
+    UpdateLeadRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        company:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        source:
+          $ref: '#/components/schemas/LeadSource'
+        status:
+          $ref: '#/components/schemas/LeadStatus'
+        notes:
+          type: string
+          nullable: true
