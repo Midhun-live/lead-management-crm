@@ -243,9 +243,3 @@ Exposed on: `http://localhost:3000`
 - **Dockerization**: Compose scripts for multi-container deployment.
 - **CI/CD Integrations**: GitHub Actions pipeline for automated builds.
 - **Automated Tests**: Unit and integration test coverage.
-
----
-
-## Author
-
-**Midhun Chakkaravarthy**
