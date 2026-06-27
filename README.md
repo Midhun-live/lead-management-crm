@@ -1,44 +1,25 @@
 # Lead Management CRM
 
-A production-ready Full Stack Lead Management CRM application designed to register users, track sales leads, filter pipelines, and view analytics dashboards. 
-
-Built with Node.js/Express, Next.js (App Router), TypeScript, Tailwind CSS, PostgreSQL, and Prisma ORM.
-
----
-
-## Project Overview
-
-The Lead Management CRM provides sales teams and administrators with a secure platform to manage sales leads. Authenticated users can create leads, monitor stages, search contacts, and view aggregated pipeline data. The architecture enforces secure multi-tenant ownership, ensuring that users can only view, edit, or delete leads they personally own.
+Lead Management CRM is a full-stack Customer Relationship Management (CRM) application built as a technical assessment for managing business leads. It features robust user authentication, dashboard analytics, search and filtering capabilities, comprehensive CRUD operations, and multi-container Docker support.
 
 ---
 
 ## Features
 
-### Backend
-- **JWT Authentication**: Secure stateless authentication using Bearer tokens.
-- **User Registration**: Enforces space-collapsing and trims names/emails.
-- **User Login**: Standard credentials verification.
-- **Protected APIs**: Route guarding checks user activation and token version checks.
-- **Lead CRUD**: Create, read, update, and soft-delete prospects.
-- **Dashboard Statistics**: Dynamic count metrics grouped by status.
-- **Search & Filter**: Backend-driven keyword searching, status, and source filters.
-- **Pagination**: Optimized paginated list querying.
-- **Request Validation**: Schema parsing using Zod before controller access.
-- **Global Error Handling**: Uniform API response structures for errors and exceptions.
-- **Prisma ORM & PostgreSQL**: Database connectivity and migrations.
-
-### Frontend
-- **Authentication Pages**: User register and sign-in modes.
-- **Auto-Login**: Instantly logs in the user and redirects to Dashboard after signing up.
-- **Protected Routing**: Route guard layouts checking active auth context.
-- **Dashboard Stats**: Statistic overview panels matching status counts.
-- **Lead Table Grid**: Responsive table with backend sorting, actions, and page shifts.
-- **Modal Forms**: Multi-purpose modals for lead creation and modification.
-- **Search Debounce**: Limits backend lookups to 500ms after typing halts.
-- **State Preservation**: Retains search/filter parameter context on page refreshes using URL states.
-- **Loading states**: Non-blocking inline loading skeleton rows.
-- **Toast Alerts**: Toast alerts matching backend messages.
-- **Accessibility**: Complete label bindings, visible focus states, focus trapping, and ESC modals closing.
+- **User Registration**: Create new user profiles with sanitized inputs.
+- **User Login**: Traditional credential-based login.
+- **JWT Authentication**: Stateless authentication using secure JSON Web Tokens.
+- **Protected Routes**: Restrict page and API access to authenticated users.
+- **Lead CRUD Operations**: Complete Create, Read, Update, and soft-delete capabilities for leads.
+- **Dashboard Analytics**: Summarized pipeline metrics grouped by lead status.
+- **Search Leads**: Perform instant search query operations over lead fields.
+- **Filter by Status**: Categorize lead listings dynamically by progress status.
+- **Filter by Source**: Categorize lead listings dynamically by acquisition channel.
+- **Input Validation**: Secure request parsing powered by Zod schemas.
+- **Global Error Handling**: Standardized controller-level error response formatting.
+- **Swagger API Documentation**: Interactive OpenAPI Spec playground for direct endpoint testing.
+- **Docker Support**: Single-command container deployment for database, API, and frontend.
+- **Health Check Endpoint**: Built-in system diagnostic monitoring page.
 
 ---
 
@@ -46,20 +27,24 @@ The Lead Management CRM provides sales teams and administrators with a secure pl
 
 ### Frontend
 - **Framework**: Next.js (App Router)
+- **Library**: React
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
-- **API Client**: Axios
-- **Form States**: React Hook Form
-- **Schema Validation**: Zod
-- **Notifications**: React Hot Toast
 
 ### Backend
 - **Runtime**: Node.js
 - **Framework**: Express.js
 - **Language**: TypeScript
-- **Database ORM**: Prisma ORM
+- **ORM**: Prisma ORM
 - **Database**: PostgreSQL
-- **Security**: JWT & Bcrypt
+- **Authentication**: JWT & Bcrypt
+- **Validation**: Zod
+
+### Documentation
+- **API Spec**: Swagger (OpenAPI 3.0)
+
+### Containerization
+- **Orchestration**: Docker & Docker Compose
 
 ---
 
@@ -67,87 +52,79 @@ The Lead Management CRM provides sales teams and administrators with a secure pl
 
 ```text
 CRM/
-├── backend/                  # Express.js backend project
-│   ├── docs/                 # OpenAPI Spec & Database documentation
-│   ├── prisma/               # Schema configuration and migrations
-│   └── src/                  # Source code (routes, controllers, models, config)
-├── frontend/                 # Next.js App Router frontend project
-│   ├── src/
-│   │   ├── app/              # Protected & public pages
-│   │   ├── components/       # Reusable input & layout components
-│   │   ├── contexts/         # React Auth state management
-│   │   ├── features/         # Feature specific subcomponents (leads list)
-│   │   ├── hooks/            # Search debounce hooks
-│   │   └── services/         # Axios API clients
-│   └── public/               # Static assets
-└── README.md                 # Project README
+├── backend/
+│   ├── docs/                  # API Specifications (openapi.yaml)
+│   ├── prisma/                # Database schema (schema.prisma) & migrations
+│   └── src/                   # Source code (controllers, repositories, services, routes)
+├── frontend/
+│   └── src/                   # Source code (app pages, components, contexts, hooks)
+├── docker-compose.yml         # Container orchestration manifest
+└── README.md                  # Project documentation
 ```
 
 ---
 
 ## Database Schema
 
-Database management is handled by Prisma ORM.
+Prisma ORM is utilized for database modeling, migrations, and type-safe query generation.
 
-- **Schema Location**: [backend/prisma/schema.prisma](file:///Users/midhun/Tech/CRM/backend/prisma/schema.prisma)
+### Main Models
 
-### Entities
+#### 1. User
+- `id` (UUID, Primary Key)
+- `name` (String)
+- `email` (String, Unique)
+- `password` (String, Hashed)
+- `isActive` (Boolean)
+- `tokenVersion` (Integer)
+- `lastLogin` (DateTime)
+- `createdAt` (DateTime)
+- `updatedAt` (DateTime)
 
-1. **User**: Holds authorization profiles, passwords, and status attributes.
-2. **Lead**: Stores contact parameters, sources, stages, and soft-delete dates.
+#### 2. Lead
+- `id` (UUID, Primary Key)
+- `name` (String)
+- `company` (String)
+- `email` (String)
+- `phone` (String)
+- `source` (Enum: WEBSITE, LINKEDIN, REFERRAL, EMAIL, PHONE, OTHER)
+- `status` (Enum: NEW, CONTACTED, QUALIFIED, WON, LOST)
+- `notes` (String, Text)
+- `createdBy` (UUID, Foreign Key referencing User)
+- `deletedAt` (DateTime, Nullable for soft-delete support)
+- `createdAt` (DateTime)
+- `updatedAt` (DateTime)
 
-### Relationship
-- **One-to-Many**: One `User` owns many `Leads`.
-- **Many-to-One**: Each `Lead` belongs to a single owner `User`.
-
-```text
-  +-------------+                 +-------------+
-  |    User     | 1             * |    Lead     |
-  |-------------|-----------------|-------------|
-  | id (PK)     |                 | id (PK)     |
-  | name        |                 | name        |
-  | email       |                 | email       |
-  | password    |                 | phone       |
-  | isActive    |                 | status      |
-  | tokenVersion|                 | source      |
-  +-------------+                 | createdBy(FK)
-                                  +-------------+
-```
+The full database schema is located at [backend/prisma/schema.prisma](file:///Users/midhun/Tech/CRM/backend/prisma/schema.prisma).
 
 ---
 
 ## API Documentation
 
-Interactive endpoint documentation is rendered through Swagger UI.
+Interactive API documentation is generated using Swagger UI.
+- **Documentation URL**: `http://localhost:5000/api-docs`
 
-- **Swagger Documentation URL**: `http://localhost:5000/api-docs` (Available when the backend server is running)
-- **OpenAPI 3.0 Specification**: [backend/docs/openapi.yaml](file:///Users/midhun/Tech/CRM/backend/docs/openapi.yaml)
-
-All endpoints mapping user registration, session logins, profile checks, dashboard analytics counters, and Lead CRUD resources are covered.
+Every backend endpoint is documented and can be tested directly from the Swagger UI dashboard while the server is active.
 
 ---
 
 ## Environment Variables
 
-### Frontend (`frontend/.env.local`)
-```text
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
-```
-
 ### Backend (`backend/.env`)
-```text
-PORT=5000
-NODE_ENV=development
-DATABASE_URL="postgresql://user:password@localhost:5432/lead_management"
-JWT_SECRET="your_jwt_secret_should_be_long_and_secure"
-JWT_EXPIRES_IN="1d"
-```
+- `PORT`: Port configuration for the Express API server.
+- `NODE_ENV`: The runtime environment (development/production).
+- `DATABASE_URL`: PostgreSQL connection string.
+- `JWT_SECRET`: Token signature secret.
+- `JWT_EXPIRES_IN`: Session lifespan (e.g., `1d`).
+
+### Frontend (`frontend/.env.local` or `.env`)
+- `NEXT_PUBLIC_API_URL`: Root path endpoint pointing to the backend Express API server.
 
 ---
 
-## Installation
+## Local Setup
 
-Follow these steps to configure and initialize the application locally:
+Follow these steps to build and run the application locally outside of container environments.
 
 ### 1. Clone the Repository
 ```bash
@@ -156,21 +133,18 @@ cd crm-project
 ```
 
 ### 2. Configure Environment Variables
-Copy backend env examples:
+Copy and fill in the environment variable template files:
 ```bash
+# In backend/
 cd backend
 cp .env.example .env
-```
-*(Open `.env` and configure your database PostgreSQL connection parameters)*
 
-Copy frontend env examples:
-```bash
+# In frontend/
 cd ../frontend
 cp .env.example .env.local
 ```
 
-### 3. Build & Migrate Backend
-Navigate back to the `backend/` folder, install dependencies, run migrations, and spin up the server:
+### 3. Install Backend & Run Migrations
 ```bash
 cd ../backend
 npm install
@@ -178,68 +152,103 @@ npm run prisma:generate
 npm run prisma:migrate
 ```
 
-### 4. Build Frontend
-Navigate to the `frontend/` folder and install dependencies:
+### 4. Install Frontend
 ```bash
 cd ../frontend
 npm install
 ```
 
----
-
-## Running the Project
-
-### Start Backend
-From the `backend/` directory:
+### 5. Start Application
 ```bash
+# Start Express Server (In backend/)
+npm run dev
+
+# Start Next.js Client (In frontend/ - open in a separate terminal)
 npm run dev
 ```
-Exposed on: `http://localhost:5000`
-
-### Start Frontend
-From the `frontend/` directory in a new terminal:
-```bash
-npm run dev
-```
-Exposed on: `http://localhost:3000`
 
 ---
 
-## API Endpoints
+## Docker Setup
+
+Deploy the complete environment (PostgreSQL, Express Backend, Next.js Frontend) using Docker:
+
+### Build Container Images
+```bash
+docker compose build
+```
+
+### Start Orchestrated Services
+```bash
+docker compose up
+```
+
+During startup, Docker automatically:
+1. Starts the PostgreSQL container database instance and runs health validation.
+2. Applies Prisma migration scripts to the database.
+3. Automatically generates the Prisma Client internal types.
+4. Boots up the Backend and Frontend servers synchronously once their dependants are healthy.
+
+### Mapped Ports & URLs
+
+- **Frontend App**: `http://localhost:3000`
+- **Backend API**: `http://localhost:5000`
+- **Swagger Documentation**: `http://localhost:5000/api-docs`
+- **Health Check Endpoint**: `http://localhost:5000/health`
+
+---
+
+## API Summary
 
 | Category | Method | Endpoint | Description |
 | :--- | :--- | :--- | :--- |
-| **Authentication** | `POST` | `/api/auth/register` | Create user profile account. |
-| | `POST` | `/api/auth/login` | Log in and return JWT token. |
-| | `GET` | `/api/auth/me` | Fetch active user credentials. |
-| **Dashboard** | `GET` | `/api/dashboard` | Get lead status metrics. |
-| **Leads** | `POST` | `/api/leads` | Create a lead. |
-| | `GET` | `/api/leads` | List leads (filtered/sorted/paginated). |
-| | `GET` | `/api/leads/:id` | Fetch single lead parameters. |
-| | `PUT` | `/api/leads/:id` | Edit lead contact details. |
-| | `DELETE`| `/api/leads/:id` | Soft delete lead record. |
+| **Authentication** | `POST` | `/api/auth/register` | Register a new user profile. |
+| | `POST` | `/api/auth/login` | Log in and retrieve JWT auth token. |
+| | `GET` | `/api/auth/me` | Retrieve authenticated user profile metadata. |
+| **Dashboard** | `GET` | `/api/dashboard` | Get lead metrics grouped by status. |
+| **Leads** | `GET` | `/api/leads` | List leads (supports query, sort, filtering). |
+| | `POST` | `/api/leads` | Create a new lead record. |
+| | `GET` | `/api/leads/:id` | Get details for a specific lead. |
+| | `PUT` | `/api/leads/:id` | Edit details of an existing lead. |
+| | `DELETE`| `/api/leads/:id` | Soft delete a specific lead. |
 
 ---
 
-## Edge Cases Considered
+## Architecture
 
-1. **Instant Session Bootstrapping**: Registering automatically signs the user in via parallel login queries, avoiding double registration-login redirections.
-2. **Next.js Router Remount Prevention**: Replaces router events with browser history updates to ensure query parameter searches never unmount inputs or drop typing focuses.
-3. **API Request Cancellation Trap**: Uses `AbortController` signals to immediately cancel pending Axios requests during search changes, preventing race conditions.
-4. **Tenant Ownership Isolation**: Middleware query scopes database requests to active user ids, blocking cross-tenant viewing or mutations.
-5. **Session Revocation**: Auth checks evaluate `tokenVersion` and user `isActive` status flags on every request to instantly terminate revoked or disabled sessions.
-6. **Form Validation Retention**: Enforces modal focus locks and retains input values on submission errors.
-7. **Empty/Loading Structural Preservation**: Skeletons and pagination are kept active during loading states without creating empty white screens.
+The project employs clean architecture principles to keep services separated, testable, and maintainable:
+- **Controller-Service-Repository Pattern**: Separates routing controllers from database execution rules and query components.
+- **Prisma ORM Database Access**: Utilizes a central database client for type-safe query handling.
+- **JWT Authentication Middleware**: Intercepts protected requests to validate the signature and ensure session status is active.
+- **Zod Data Parsing**: Validates request parameters and payload schemas before controller methods execute.
+- **Centralized Error Handling**: Intercepts standard application exceptions and serves standardized JSON error payloads.
+- **Swagger Documentation**: Houses specs in `docs/openapi.yaml` and hosts them on an interactive Swagger UI dashboard.
+- **Dockerized Deployment**: Deploys multi-stage build pipelines to assemble minimized container runtimes.
+
+---
+
+## Edge Cases Handled
+
+- **Duplicate Email Registration**: Catching database uniqueness constraint violations to return user-friendly registration errors.
+- **Invalid Login Credentials**: Safely rejecting login requests without revealing details about whether the user exists or not.
+- **Missing Required Fields**: Schema validation throws clear feedback prior to running SQL execution blocks.
+- **Invalid & Expired JWTs**: Interceptors block invalid request signatures and expire outdated login sessions automatically.
+- **Unauthorized Tenant Access**: Queries are contextualized by the authenticated user's ID, preventing users from accessing or modifying leads owned by others.
+- **Invalid Lead ID Parameters**: Handling bad format requests (UUID) gracefully without application crashes.
+- **Empty Search & Filter Results**: Displaying clear empty-state components instead of infinite loading animations.
+- **SQL Injection Prevention**: Using Prisma's built-in parameterization on all query blocks.
+- **Secure Password Hashing**: Applying Salted Bcrypt rounds during registration and verification routines.
+- **Database Startup Synchronicity**: Implementing Docker wait loops via netcat checks to ensure the backend starts only after PostgreSQL is fully ready.
+- **Automatic Docker Migrations**: Applying Prisma schemas automatically when container clusters initialize.
 
 ---
 
 ## Future Improvements
 
-- **Role-Based Access Control (RBAC)**: Custom permissions groups (Admin, Agent, Manager).
-- **Refresh Tokens Rotation**: Secure session rotation mechanism.
-- **Audit Logging**: Trace profile logins and changes.
-- **Activity Timelines**: View lead lifecycle notes chronologically.
-- **Lead File Attachments**: Attach custom contracts or documentation to prospects.
-- **Dockerization**: Compose scripts for multi-container deployment.
-- **CI/CD Integrations**: GitHub Actions pipeline for automated builds.
-- **Automated Tests**: Unit and integration test coverage.
+- **Pagination**: Incorporate offset or cursor-based list controls on the frontend table grid.
+- **Role-Based Access Control (RBAC)**: Support separate access privileges (Admin, Manager, Agent).
+- **Refresh Token Rotation**: Implement secure cookie-based session refreshment routines.
+- **Audit Logs**: Maintain record-level revision history logging.
+- **Email Notifications**: Alert sales agents when status levels change or when leads are reassigned.
+- **File Attachments**: Upload documents and contracts directly to lead profiles.
+- **Advanced Reporting**: Render interactive custom charts and print exportable sales summaries.
